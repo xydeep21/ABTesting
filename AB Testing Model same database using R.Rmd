@@ -1,0 +1,98 @@
+---
+title: "AB TESTING"
+author: "ID476577"
+date: "10/7/2020"
+output:
+  word_document: default
+  html_document: default
+---
+```{r}
+library(gcookbook)
+library(ggplot2)
+```
+```{r}
+library(mice)
+```
+```{r}
+library(VIM)
+```
+## Read data, put data in a dataframe and replace the " " value to NA
+```{r}
+row_data = read.csv("C:/Users/xuyua/OneDrive/Desktop/Olin/cv/gogogo!/AB Testing/Python_project_eda(1).csv")
+row_data[row_data==""]=NA
+```
+## The first step is data cleansing
+```{r}
+## draw a plot to find out which fileds have more missing value 
+aggr(row_data, prop = F, number = T)
+```
+```{r}
+## Fields "row_data$spend_usd_next_14_days,row_data$user_added_credit_card,row_data$user_added_dcb,row_data$user_added_gift_card
+## row_data$user_added_paypal# contains a lot of missing value and these missing value can be represented by 0
+row_data[is.na(row_data$spend_usd_next_14_days),"spend_usd_next_14_days"]=0
+row_data[is.na(row_data$user_added_credit_card),"user_added_credit_card"]=0
+row_data[is.na(row_data$user_added_dcb),"user_added_dcb"]=0
+row_data[is.na(row_data$user_added_gift_card),"user_added_gift_card"]=0
+row_data[is.na(row_data$user_added_paypal),"user_added_paypal"]=0
+```
+```{r}
+## The rest missing values are just take few parts in its own fileds so we drop all other missing values 
+## We do not need to use mean.median,zs or random number to make implements
+data = na.omit(row_data)
+```
+```{r}
+## Inorder to watch the purchase in next 2 weeks clearly we need a field named purchase_or_not which is a blooean type data to
+## show they make a purchase or not
+p1 = data$spend_usd_next_14_days
+p1[p1!=0]=1
+data$purchase_or_not=p1
+head(data)
+## now we have 16 colunms and already append the new colunm in data
+```
+## We keep 85.47% percent of original data which means that our new data is fine
+## The second step is to do EDA find the inner relationship among all the data
+```{r}
+## build a correlation matrix to find out the relationship among all payment methods to find out the behavior of 
+## customers purchase methods
+method_data = data.frame(data$user_added_credit_card,data$user_added_dcb,data$user_added_gift_card,data$user_added_paypal)
+colnames(method_data)=c("cc","dcb","gc","pp")
+method_matrix = as.matrix(method_data)
+cor(method_matrix)
+## we can find out that the method for people to make purchase is not that strongly correlated
+```
+
+```{r}
+## build a correlation matrix to find out the relationship among all steps that customer to make a purchase
+pay_data = data.frame(data$visit_before,data$saw_cart_before,data$clicked_buy_before,data$made_purchase_before)
+colnames(pay_data)=c("vb","cb","bb","pb")
+pay_matrix = as.matrix(pay_data)
+cor(pay_matrix)
+## this correlation map shhows that when customers step into the "clicked_buy_before" they are likely to make a purchase before
+```
+
+
+```{r}
+## Find the country that has more than 10000 orders and get their country id to set these country as our target country
+country = table(data$country)
+bigcountry <- country[which(country>10000) ]
+bigcountry
+```
+```{r}
+## Then find the relationship betweenm the new colunm "purcase_or_not" to see which fields are highly related to it
+## cause there are the amount of money is not that important and there are two many 0 values so it is hard to put all amounts in
+hist(data$purchase_or_not)
+## From this histgram we can find out that even we have a lot registed customers but they didn't make that a lot purchases
+```
+```{r}
+##At last we plot some scatter plots to find out what can cause people to make a purchase within 14 days
+ggplot(data, aes(x=data$buyer_week_before, y=data$spend_usd_next_14_days)) + geom_point()
+```
+```{r}
+ggplot(data, aes(x=data$user_added_fop, y=data$spend_usd_next_14_days)) + geom_point()
+```
+```{r}
+ggplot(data, aes(x=data$clicked_buy_before, y=data$spend_usd_next_14_days)) + geom_point()
+```
+##(What we find out)According to the plots and data above we find out that no matter people use which method to make a purchase will not effect their desicion to make a purchase. But whehter they have a puchase a method is highly related to if they make a purchase or not.
+And we find out that even we have a lot active customers most of them didn't make a purchase. And even our customers are speard among the world we have 11 countries which named big country contribute the most profits. 
+##(Hypothesis and practical solution)So our hypothesis is we aim at these 11 countries active customers and try to encourage them to add one purchase method and our revenue will increase. And the practicle method is we send email to every active users to tell them if they add one purchase method and we will provide $5 dollars in their account.
